@@ -10,6 +10,16 @@ var users = require('./routes/users');
 
 var app = express();
 
+//esto es lo que fui agregando de mongoose
+var mongoose = require('mongoose');
+require('./models/Posts');
+//Lo de abajo es la explicacion de la linea de arriba
+//Next we register that model with with the global mongoose object we imported
+//using require() so that it can be used to interact with the database anywhere
+//else mongoose is imported.
+require('./models/Comments');
+mongoose.connect('mongodb://localhost/news');
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -55,6 +65,8 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
+
+
 
 
 module.exports = app;
