@@ -5,12 +5,7 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
-var routes = require('./routes/index');
-var users = require('./routes/users');
-
-var app = express();
-
-//esto es lo que fui agregando de mongoose
+// *** esto es lo que fui agregando de mongoose ***
 var mongoose = require('mongoose');
 require('./models/Posts');
 //Lo de abajo es la explicacion de la linea de arriba
@@ -19,6 +14,13 @@ require('./models/Posts');
 //else mongoose is imported.
 require('./models/Comments');
 mongoose.connect('mongodb://localhost/news');
+
+// Es fundamental que lo de mongoose vaya antes que lo que sigue.
+
+var routes = require('./routes/index');
+var users = require('./routes/users');
+
+var app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -65,8 +67,5 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-
-
-
 
 module.exports = app;
