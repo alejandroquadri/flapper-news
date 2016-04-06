@@ -8,6 +8,11 @@ app.config(function($stateProvider,$urlRouterProvider){
       .state('home',{
         url:'/home',
         templateUrl:'/home.html',
+        resolve: {
+          postPromise: function(posteos){
+            return posteos.getAll();
+          }
+        },
         controller:'MainCtrl',
         controllerAs:'Ctrl'
       })
@@ -15,6 +20,11 @@ app.config(function($stateProvider,$urlRouterProvider){
         url:'/posts/{id}',
         templateUrl:'/posts.html',
         controller:'PostsCtrl',
+        resolve:{
+          posteoResolve:function($stateParams, posteos){
+            return posteos.get($stateParams.id);
+          }
+        },
         controllerAs:'CtrlPosteos'
       })
 });
@@ -25,62 +35,101 @@ app.controller('MainCtrl',function(posteos){
 
   this.addPost = function(){
     if (!this.title | this.title ==='') {return;}
-    this.posts.push({
+    posteos.create({
       title: this.title,
-      link: this.link,
-      upvotes: 0,
-      comments: [
-        {author: 'Joe', body: 'Cool post!', upvotes: 0},
-        {author: 'Bob', body: 'Great idea but everything is wrong!', upvotes: 0}
-      ]
+      link: this.link
     });
     this.title = '';
     this.link = '';
   };
 
   this.incrementUpvotes = function(post){
-    post.upvotes += 1;
+    posteos.upvote(post);
   };
+
 })
-.controller('PostsCtrl',function($stateParams,posteos,$scope){
+.controller('PostsCtrl',function(posteoResolve,posteos,$scope){
+  //posteoResolve es el objeto que obtuve en el state en Resolve que lo inyecto en el controlador
+  //no sabia que se podia hacer eso
 
-  this.post = posteos.posts[$stateParams.id];
-  console.log($stateParams.id);
-  console.log(this.post);
+  this.post = posteoResolve;
 
-  this.incrementUpvotes = function(post){
-    post.upvotes += 1;
+  this.incrementUpvotes = function(comment){
+    posteos.upvoteComment(posteoResolve, comment);
   };
 
   this.addComment = function(){
-    console.log(this.post);
+    var objPost = this.post;
+    //lo de arriba lo invente yo para poder acceder con this.post en el then sin tener que usar el $scope
     if($scope.body === '') { return; }
-    this.post.comments.push({
+    posteos.addComment(this.post._id, {
       body: $scope.body,
-      author: 'user',
-      upvotes: 0
-    });
+      author: 'user'
+    }).then(function(comment){
+      objPost.comments.push(comment.data);
+    })
     $scope.body = '';
-    console.log(this.post);
   };
 
 })
 
-// app.controller('MainCtrl', [
-// '$scope',
-// function($scope){
-//   $scope.test = 'Hello world!';
-// }]);
+app.factory('posteos',function($http){
 
-app.factory('posteos',function(){
   var o = {
-    posts:[
-      {title: 'post 1', upvotes: 5},
-      {title: 'post 2', upvotes: 2},
-      {title: 'post 3', upvotes: 15},
-      {title: 'post 4', upvotes: 9},
-      {title: 'post 5', upvotes: 4, comments:[]}
-    ]
+    posts:[]
   };
+
+  // asi lo hacen en el tutorial, yo lo hice distino, porque decía que estaba deprecated el success
+  // o.getAll = function() {
+  //   return $http.get('/posts').success(function(data){
+  //     angular.copy(data, o.posts);
+  //   });
+  // };
+  // lo distinto es que el callback es un objeto siendo la prop data, donde estan todos los datos.
+
+  o.getAll = function(){
+    return $http.get('/posts')
+    .then(function(response){
+      angular.copy(response.data, o.posts);
+    });
+  }
+
+  o.create = function(post) {
+    return $http.post('/posts', post).then(function(response){
+      o.posts.push(response.data);
+    });
+  };
+
+  o.upvote = function(post) {
+    return $http.put('/posts/' + post._id + '/upvote')
+    .then(function(response){
+      post.upvotes += 1;
+    });
+  };
+
+  o.get = function(id){
+    return $http.get('/posts/'+id).then(function(response){
+      return response.data;
+    });
+  };
+
+  o.addComment = function(id, comment){
+    console.log('llega');
+    console.log('id', id);
+    console.log('comment',comment);
+    return $http.post('/posts/' + id + '/comments', comment);
+  };
+
+  o.upvoteComment = function(post, comment) {
+    console.log('quiere salir');
+    console.log(post._id);
+    console.log(comment._id);
+    return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
+    .then(function(response){
+        console.log('vuelve');
+        comment.upvotes += 1
+    });
+  };
+
   return o;
 })
