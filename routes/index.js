@@ -44,6 +44,29 @@ router.param('post',function(req,res,next,id){
   });
 });
 
+// Delete post
+router.delete('/posts/:post', function(req, res) {
+	req.post.comments.forEach(function(id) {
+		Comment.remove({
+			_id: id
+		}, function(err) {
+			if (err) { return next(err)}
+		});
+	})
+	Post.remove({
+		_id: req.params.post
+	}, function(err, post) {
+		if (err) { return next(err); }
+
+		// get and return all the posts after you delete one
+		Post.find(function(err, posts) {
+			if (err) { return next(err); }
+
+			res.json(posts);
+		});
+	});
+});
+
 // logica para traer un comentario con id
 router.param('comment', function(req, res, next, id){
   var query = Comment.findById(id);

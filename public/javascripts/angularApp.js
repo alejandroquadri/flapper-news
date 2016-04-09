@@ -43,6 +43,10 @@ app.controller('MainCtrl',function(posteos){
     this.link = '';
   };
 
+  this.deletePost = function(post) {
+    posteos.delete(post);
+  }
+
   this.incrementUpvotes = function(post){
     posteos.upvote(post);
   };
@@ -112,6 +116,14 @@ app.factory('posteos',function($http){
       return response.data;
     });
   };
+
+  // delete single post
+  o.delete = function(post) {
+    return $http.delete('/posts/' + post._id).success(function(data) {
+      console.log('vuelve');
+      angular.copy(data, o.posts);
+    });
+  }
 
   o.addComment = function(id, comment){
     console.log('llega');

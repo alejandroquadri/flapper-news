@@ -29,6 +29,9 @@
         <span>
           <a href="#/posts/{{post._id}}">Comments {{$index}}</a>
         </span>
+        <span style="float: right;" ng-click="Ctrl.deletePost(post)">
+  				<a href="#"> Delete </a>
+  			</span>
         - upvotes: {{post.upvotes}}
       </div>
       <form ng-submit="Ctrl.addPost()">
