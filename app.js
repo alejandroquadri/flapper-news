@@ -5,6 +5,7 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
+
 // *** esto es lo que fui agregando de mongoose ***
 var mongoose = require('mongoose');
 require('./models/Posts');
@@ -13,12 +14,21 @@ require('./models/Posts');
 //using require() so that it can be used to interact with the database anywhere
 //else mongoose is imported.
 require('./models/Comments');
+require('./models/Users');
+
+
+var passport = require("passport");
+require('./config/passport');
+
+var routes = require('./routes/index');
+var users = require('./routes/users');
+
+
 mongoose.connect('mongodb://localhost/news');
 
 // Es fundamental que lo de mongoose vaya antes que lo que sigue.
 
-var routes = require('./routes/index');
-var users = require('./routes/users');
+
 
 var app = express();
 
@@ -33,6 +43,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(passport.initialize());
 
 app.use('/', routes);
 app.use('/users', users);
