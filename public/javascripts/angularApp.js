@@ -5,6 +5,27 @@ app.config(function($stateProvider,$urlRouterProvider){
     $urlRouterProvider.otherwise('home');
 
     $stateProvider
+      .state('login', {
+        url: '/login',
+        templateUrl: '/login.html',
+        controller: 'AuthCtrl',
+        onEnter: function($state, auth){
+          if(auth.isLoggedIn()){
+            console.log('llega');
+            $state.go('home');
+          }
+        }
+      })
+      .state('register', {
+        url: '/register',
+        templateUrl: '/register.html',
+        controller: 'AuthCtrl',
+        onEnter: ['$state', 'auth', function($state, auth){
+          if(auth.isLoggedIn()){
+            $state.go('home');
+          }
+        }]
+      })
       .state('home',{
         url:'/home',
         templateUrl:'/home.html',
@@ -29,9 +50,10 @@ app.config(function($stateProvider,$urlRouterProvider){
       })
 });
 
-app.controller('MainCtrl',function(posteos){
+app.controller('MainCtrl',function(posteos, auth){
   this.test = 'Hello world!';
   this.posts = posteos.posts;
+  this.isLoggedIn = auth.isLoggedIn;
 
   this.addPost = function(){
     if (!this.title | this.title ==='') {return;}
@@ -52,11 +74,12 @@ app.controller('MainCtrl',function(posteos){
   };
 
 })
-.controller('PostsCtrl',function(posteoResolve,posteos,$scope){
+.controller('PostsCtrl',function(posteoResolve,posteos,$scope, auth){
   //posteoResolve es el objeto que obtuve en el state en Resolve que lo inyecto en el controlador
   //no sabia que se podia hacer eso
 
   this.post = posteoResolve;
+  this.isLoggedIn = auth.isLoggedIn;
 
   this.incrementUpvotes = function(comment){
     posteos.upvoteComment(posteoResolve, comment);
@@ -77,7 +100,33 @@ app.controller('MainCtrl',function(posteos){
 
 })
 
-app.factory('posteos',function($http){
+.controller('AuthCtrl', function($scope, $state, auth){
+  $scope.user = {};
+
+  $scope.register = function(){
+    auth.register($scope.user).error(function(error){
+      $scope.error = error;
+    }).then(function(){
+      $state.go('home');
+    });
+  };
+
+  $scope.logIn = function(){
+    auth.logIn($scope.user).error(function(error){
+      $scope.error = error;
+    }).then(function(){
+      $state.go('home');
+    });
+  };
+})
+
+.controller('NavCtrl', function($scope, auth){
+  $scope.isLoggedIn = auth.isLoggedIn;
+  $scope.currentUser = auth.currentUser;
+  $scope.logOut = auth.logOut;
+})
+
+app.factory('posteos',function($http, auth){
 
   var o = {
     posts:[]
@@ -99,13 +148,18 @@ app.factory('posteos',function($http){
   }
 
   o.create = function(post) {
-    return $http.post('/posts', post).then(function(response){
+    console.log('llega');
+    return $http.post('/posts', post,{
+    headers: {Authorization: 'Bearer '+ auth.getToken()}
+    }).then(function(response){
       o.posts.push(response.data);
     });
   };
 
   o.upvote = function(post) {
-    return $http.put('/posts/' + post._id + '/upvote')
+    return $http.put('/posts/' + post._id + '/upvote', null, {
+    headers: {Authorization: 'Bearer '+auth.getToken()}
+    })
     .then(function(response){
       post.upvotes += 1;
     });
@@ -129,14 +183,18 @@ app.factory('posteos',function($http){
     console.log('llega');
     console.log('id', id);
     console.log('comment',comment);
-    return $http.post('/posts/' + id + '/comments', comment);
+    return $http.post('/posts/' + id + '/comments', comment, {
+    headers: {Authorization: 'Bearer '+auth.getToken()}
+    });
   };
 
   o.upvoteComment = function(post, comment) {
     console.log('quiere salir');
     console.log(post._id);
     console.log(comment._id);
-    return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
+    return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote', null, {
+    headers: {Authorization: 'Bearer '+auth.getToken()}
+    })
     .then(function(response){
         console.log('vuelve');
         comment.upvotes += 1
@@ -144,13 +202,11 @@ app.factory('posteos',function($http){
   };
 
   return o;
-});
+})
 
-app.factory('auth',function($http,$window){
+.factory('auth',function($http, $window){
 
   var auth = {};
-
-  return auth;
 
   auth.saveToken = function (token){
     $window.localStorage['flapper-news-token'] = token;
@@ -194,6 +250,7 @@ app.factory('auth',function($http,$window){
 
   auth.logOut = function(){
     $window.localStorage.removeItem('flapper-news-token');
-  };  
+  };
 
+  return auth;
 })
