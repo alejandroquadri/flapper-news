@@ -1,5 +1,6 @@
 var express = require('express');
 var passport = require('passport');
+var jwt = require('express-jwt');
 
 var router = express.Router();
 
@@ -13,6 +14,11 @@ var Post = mongoose.model('Post');
 var Comment = mongoose.model('Comment');
 var User = mongoose.model('User');
 
+var auth = jwt({
+  secret: "SECRET", // TODO again, this should be stored in an ENV variable and kept off the codebase, same as it is in the User model
+  userProperty: "payload"
+});
+
 // traer todos los posts
 router.get('/posts', function(req, res, next) {
   Post.find(function(err, posts){
@@ -23,8 +29,9 @@ router.get('/posts', function(req, res, next) {
 });
 
 // crear un post nuevo
-router.post('/posts', function(req, res, next) {
+router.post('/posts', auth, function(req, res, next) {
   var post = new Post(req.body);
+  post.author = req.payload.username;
 
   post.save(function(err, post){
     if(err){ return next(err); }
@@ -94,7 +101,7 @@ router.get('/posts/:post', function(req, res, next) {
 
 
 // aumentar votos de un post
-router.put('/posts/:post/upvote',function(req,res,next){
+router.put('/posts/:post/upvote', auth, function(req,res,next){
   console.log('antes', req.post);
   req.post.upvote(function(err,post){
     if (err) { return next(err);}
@@ -104,10 +111,11 @@ router.put('/posts/:post/upvote',function(req,res,next){
 });
 
 // postear un comentario
-router.post('/posts/:post/comments', function(req, res, next) {
+router.post('/posts/:post/comments', auth, function(req, res, next) {
   var comment = new Comment(req.body);
   comment.post = req.post;
-
+  comment.author = req.payload.username;
+  
   comment.save(function(err, comment){
     if(err){ return next(err); }
 
@@ -121,7 +129,7 @@ router.post('/posts/:post/comments', function(req, res, next) {
 });
 
 //aumentar votos de un comentario
-router.put('/posts/:post/comments/:comment/upvote', function(req, res, next){
+router.put('/posts/:post/comments/:comment/upvote', auth, function(req, res, next){
   req.comment.upvote(function(err,comment){
     if (err) {
       return next(err);
